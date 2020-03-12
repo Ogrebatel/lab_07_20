@@ -110,7 +110,7 @@ public:
                     send_clients_list(*it);
 
                 } else {
-                    bad_request(*it, request);
+                    bad_request(*it);
                 }
                 ++it;
             }
