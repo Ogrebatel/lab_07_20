@@ -194,7 +194,7 @@ public:
     {
         while (TRUE) {
             member new_member(service);
-            boost::asio::ip::tcp::acceptor acceptor acceptor(*service,
+            boost::asio::ip::tcp::acceptor acceptor(*service,
                     endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
                     8001));
             acceptor.accept(new_member.my_socket);
