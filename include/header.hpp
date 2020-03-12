@@ -13,7 +13,7 @@
 #include <boost/log/utility/setup/console.hpp>
 //#include <boost/log/support/date_time.hpp>
 #include <boost/log/sources/severity_logger.hpp>
-#include <boost/log/utility/setup/console.hpp>
+//#include <boost/log/utility/setup/console.hpp>
 //#include <boost/log/sinks.hpp>
 #include <boost/core/null_deleter.hpp>
 #include <boost/log/expressions/keyword.hpp>
@@ -63,14 +63,14 @@ public:
         int i = 1;
         boost::asio::streambuf buffer{};
         log_init();
-        while(i > 0){
+        while (i > 0){
             my_lock.lock();
             reload_vector();
             if (client_list_changed)
                 change_for_all();
             my_lock.unlock();
 
-            for(auto it = clients.begin(); it != clients.end();){
+            for (auto it = clients.begin(); it != clients.end();){
                 try {
                     if (!(*it)->my_socket.is_open()) throw 1;
 //                    signal(SIGALRM, intr);
@@ -97,7 +97,7 @@ public:
 
                 std::string output(std::istreambuf_iterator<char>{&buffer},
                                    std::istreambuf_iterator<char>{});
-                std::string request = 
+                std::string request =
                     output.substr(0, output.find_first_of('\n'));
 
                 if (request.find("login") == 0) {
@@ -228,16 +228,15 @@ public:
         <boost::log::trivial::severity_level, char>("Severity");
         logging::add_file_log // расширенная настройка
                 (
-                        logging::keywords::file_name = "log_%N.log",
-                        logging::keywords::rotation_size = SIZE_FILE,
-                        logging::keywords::time_based_rotation = 
-                        boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
-                        logging::keywords::format = "[%TimeStamp%] [%Severity%] %Message%"
-                );
+                logging::keywords::file_name = "log_%N.log",
+                logging::keywords::rotation_size = SIZE_FILE,
+                logging::keywords::time_based_rotation =
+                boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
+                logging::keywords::format = "[%TimeStamp%] [%Severity%] %Message%");
 
         logging::add_console_log(
                         std::cout,
-                        logging::keywords::format 
+                        logging::keywords::format
                         = "[%TimeStamp%] [%Severity%]: %Message%");
         logging::add_common_attributes();
     }
