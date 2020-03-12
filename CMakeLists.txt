@@ -27,6 +27,8 @@ string(APPEND CMAKE_CXX_FLAGS " -Wshadow -Wnon-virtual-dtor")
 
 hunter_add_package(GTest)
 find_package(GTest CONFIG REQUIRED)
+hunter_add_package(Boost COMPONENTS log)
+find_package(Boost CONFIG REQUIRED log)
 
 # TODO: change template word to project name and delete this comment
 add_library(template STATIC
@@ -47,7 +49,7 @@ target_include_directories(tests
 )
 # TODO: change template word to project name and delete this comment
 target_link_libraries(tests GTest::main template)
-
+target_link_libraries(template Boost::log)
 enable_testing()
 add_test(NAME unit_tests COMMAND tests) 
 
