@@ -25,7 +25,6 @@
 using std::thread;
 using std::exception;
 using sock = boost::asio::ip::tcp::socket;
-using acceptor = boost::asio::ip::tcp::acceptor;
 using endpoint = boost::asio::ip::tcp::endpoint;
 namespace logging = boost::log;
 #define TRUE 1
@@ -78,14 +77,14 @@ public:
                     boost::asio::read_until((*it)->my_socket, buffer, '\n');
                 }
 
-                catch (int i)
-                {
-                    BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
-                    << " " << "disconnected";
-                    (*it)->my_socket.close();
-                    clients.erase(it);
-                    continue;
-                }
+              //  catch (int i)
+              //  {
+              //      BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
+              //      << " " << "disconnected";
+              //      (*it)->my_socket.close();
+              //      clients.erase(it);
+              //      continue;
+              //  }
                 catch (exception &e) {
                     BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
                                             << " " << "disconnected: "
@@ -195,7 +194,7 @@ public:
     {
         while (TRUE) {
             member new_member(service);
-            acceptor acceptor(*service,
+            boost::asio::ip::tcp::acceptor acceptor acceptor(*service,
                     endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
                     8001));
             acceptor.accept(new_member.my_socket);
