@@ -83,7 +83,6 @@ public:
                                    std::istreambuf_iterator<char>{});
                 std::string request =
                     output.substr(0, output.find_first_of('\n'));
-
                 if (request.find("login") == 0) {
                     bool check = login_client(*it, request);
                     send_to_logged(*it, check);
