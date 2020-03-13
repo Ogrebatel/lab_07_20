@@ -98,7 +98,7 @@ public:
                     bad_request(*it);
                 }
                 ++it;
-            }            
+            }
         }
     }
 
