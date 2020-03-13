@@ -29,11 +29,6 @@ using endpoint = boost::asio::ip::tcp::endpoint;
 namespace logging = boost::log;
 #define TRUE 1
 #define SIZE_FILE 10*1024*1024
-//void intr(int signal){
-//        cout << "hello!" << endl;
-//        int a = 13;
-//        throw a;
-//}
 
 struct member{
     explicit member(boost::asio::io_service* service):
@@ -59,10 +54,10 @@ public:
 //---------------------------- ENGINE --------------------------------
 
     void main_loop(){
-        int i = 1;
         boost::asio::streambuf buffer{};
         log_init();
-        while (i > 0){
+        while (TRUE){
+			sleep(5);
             my_lock.lock();
             reload_vector();
             if (client_list_changed)
@@ -72,19 +67,9 @@ public:
             for (auto it = clients.begin(); it != clients.end();){
                 try {
                     if (!(*it)->my_socket.is_open()) throw 1;
-//                    signal(SIGALRM, intr);
-//                    alarm(5);
                     boost::asio::read_until((*it)->my_socket, buffer, '\n');
                 }
 
-              //  catch (int i)
-              //  {
-              //      BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
-              //      << " " << "disconnected";
-              //      (*it)->my_socket.close();
-              //      clients.erase(it);
-              //      continue;
-              //  }
                 catch (exception &e) {
                     BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
                                             << " " << "disconnected: "
@@ -113,8 +98,7 @@ public:
                     bad_request(*it);
                 }
                 ++it;
-            }
-            sleep(1);
+            }            
         }
     }
 
