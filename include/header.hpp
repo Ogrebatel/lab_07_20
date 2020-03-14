@@ -28,7 +28,7 @@ namespace logging = boost::log;
 #define TRUE 1
 #define TIMEOUT 5
 #define SIZE_FILE 10*1024*1024
-const std::string type_exeption("read_until: Resource temporarily unavailable");
+const char type_exeption[] = "read_until: Resource temporarily unavailable";
 
 
 struct member{
