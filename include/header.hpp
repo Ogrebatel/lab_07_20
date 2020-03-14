@@ -166,7 +166,6 @@ public:
 //--------------------------------------------------------------------
 
 //----------------------- SHOW CLIENTS -------------------------------
-
     void send_clients_list(std::shared_ptr<member> client){
         boost::asio::streambuf buffer{};
         std::ostream out(&buffer);
