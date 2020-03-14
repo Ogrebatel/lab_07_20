@@ -11,31 +11,31 @@
 #include <boost/log/utility/setup/file.hpp>
 #include <boost/log/utility/setup/common_attributes.hpp>
 #include <boost/log/utility/setup/console.hpp>
-//#include <boost/log/support/date_time.hpp>
 #include <boost/log/sources/severity_logger.hpp>
-//#include <boost/log/utility/setup/console.hpp>
-//#include <boost/log/sinks.hpp>
 #include <boost/core/null_deleter.hpp>
-#include <boost/log/expressions/keyword.hpp>
 #include <mutex>
 #include <thread>
-#include <string>
-#include <vector>
+#include <ctime>
 
 using std::thread;
 using std::exception;
 using sock = boost::asio::ip::tcp::socket;
+using acceptor = boost::asio::ip::tcp::acceptor;
 using endpoint = boost::asio::ip::tcp::endpoint;
 namespace logging = boost::log;
 #define TRUE 1
+#define TIMEOUT 5
 #define SIZE_FILE 10*1024*1024
+static const std::string type_exeption ("read_until: Resource temporarily unavailable");
+
 
 struct member{
-    explicit member(boost::asio::io_service* service):
+    member(boost::asio::io_service* service):
     my_socket(*service) {}
     sock my_socket;
     std::string name;
     bool clients_changed;
+    time_t _lastTime;
 };
 
 class server{
@@ -56,15 +56,15 @@ public:
     void main_loop(){
         boost::asio::streambuf buffer{};
         log_init();
-        while (TRUE){
-            sleep(5);
+        while(TRUE) {
             my_lock.lock();
             reload_vector();
             if (client_list_changed)
                 change_for_all();
             my_lock.unlock();
 
-            for (auto it = clients.begin(); it != clients.end();){
+            for(auto it = clients.begin(); it != clients.end();) {
+               // sleep(5);
                 try {
                     if (!(*it)->my_socket.is_open()) throw 1;
                     (*it)->my_socket.non_blocking(true);
@@ -72,32 +72,46 @@ public:
                 }
 
                 catch (exception &e) {
-                    BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
-                                            << " " << "disconnected: "
-                                            <<e.what();
-                    (*it)->my_socket.close();
-                    clients.erase(it);
-                    continue;
+                    if (e.what() != type_exeption){
+                        BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
+                                                << " " << "disconnected: "
+                                                << e.what();
+                        (*it)->my_socket.close();
+                        clients.erase(it);
+                        continue;
+                    }
                 }
 
                 std::string output(std::istreambuf_iterator<char>{&buffer},
                                    std::istreambuf_iterator<char>{});
-                std::string request =
-                    output.substr(0, output.find_first_of('\n'));
-                if (request.find("login") == 0) {
-                    bool check = login_client(*it, request);
-                    send_to_logged(*it, check);
+                std::string request = output.substr(0, output.find_first_of('\n'));
 
+                if (request.find("login") == 0) {
+                    bool check = login_client(*it ,request);
+                    send_to_logged(*it, check);
+                    (*it)->_lastTime = clock();
+                    
                 } else if (request == "ping") {
                     bool check = ping_from_client(*it);
                     answer_to_ping(*it, check);
+                    (*it)->_lastTime = clock();
+                    
                 } else if (request == "clients") {
                     send_clients_list(*it);
-
+                    (*it)->_lastTime = clock();
+                    
                 } else {
-                    bad_request(*it);
+                    time_t end = (clock() - (*it)->_lastTime)/CLOCKS_PER_SEC;
+                    if (end > TIMEOUT)
+                    {
+                        BOOST_LOG_TRIVIAL(info) << "client " << (*it)->name
+                        << " " << "disconnected: timeout";
+                        (*it)->my_socket.close();
+                        clients.erase(it);
+                        continue;
+                    }
                 }
-                ++it;
+                it = (std::next(it));
             }
         }
     }
@@ -106,12 +120,11 @@ public:
 
 //---------------------------- LOGIN ---------------------------------
 
-    bool login_client(std::shared_ptr<member> client,
-        const std::string& request){
+    bool login_client(std::shared_ptr<member> client, const std::string& request){
         if (!client->name.empty())
             return false;
         client->name = request.substr(6, request.length());
-        for (auto & _client : clients) _client->clients_changed = true;
+        for(auto & _client : clients) _client->clients_changed = true;
         client->clients_changed = false;
         return true;
     }
@@ -157,7 +170,7 @@ public:
         boost::asio::streambuf buffer{};
         std::ostream out(&buffer);
         std::string clients_list;
-        for (auto & _client : clients)
+        for(auto & _client : clients)
             clients_list = clients_list + _client->name + " ";
         clients_list += '\n';
         out << clients_list;
@@ -166,7 +179,7 @@ public:
 
 //--------------------------------------------------------------------
 
-    void bad_request(std::shared_ptr<member> client){
+    void bad_request(std::shared_ptr<member> client, std::string request){
         boost::asio::streambuf buffer{};
         BOOST_LOG_TRIVIAL(info) << "client " << client->name
                                 << ":" << " bad request";
@@ -176,15 +189,13 @@ public:
 
     void accept_connection()
     {
-        while (TRUE) {
+        while(TRUE) {
             member new_member(service);
-            boost::asio::ip::tcp::acceptor acceptor(*service,
-                    endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
-                    8001));
+            acceptor acceptor(*service,
+                    endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 8001));
             acceptor.accept(new_member.my_socket);
             my_lock.lock();
-            tmp_clients.emplace_back(std::make_shared<member>
-            (std::move(new_member)));
+            tmp_clients.emplace_back(std::make_shared<member>(std::move(new_member)));
             client_list_changed = true;
             my_lock.unlock();
             BOOST_LOG_TRIVIAL(trace) << "new client connected";
@@ -198,6 +209,7 @@ public:
     void reload_vector() {
         while (tmp_clients.size() != 0) {
         clients.emplace_back((tmp_clients[tmp_clients.size() - 1]));
+        clients[clients.size() -1]->_lastTime = clock();
         tmp_clients.pop_back();
         }
     }
@@ -207,28 +219,26 @@ public:
 
     void log_init()
     {
-        boost::log::register_simple_formatter_factory
-        <boost::log::trivial::severity_level, char>("Severity");
+        boost::log::register_simple_formatter_factory< boost::log::trivial::severity_level, char >("Severity");
         logging::add_file_log // расширенная настройка
                 (
-                logging::keywords::file_name = "log_%N.log",
-                logging::keywords::rotation_size = SIZE_FILE,
-                logging::keywords::time_based_rotation =
-                boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
-                logging::keywords::format =
-               "[%TimeStamp%] [%Severity%] %Message%");
+                        logging::keywords::file_name = "log_%N.log",
+                        logging::keywords::rotation_size = SIZE_FILE,
+                        logging::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
+                        logging::keywords::format = "[%TimeStamp%] [%Severity%] %Message%"
+                );
 
-        logging::add_console_log(
+        logging::add_console_log
+                (
                         std::cout,
-                        logging::keywords::format
-                        = "[%TimeStamp%] [%Severity%]: %Message%");
+                        logging::keywords::format = "[%TimeStamp%] [%Severity%]: %Message%"
+                );
         logging::add_common_attributes();
     }
 
-
     void change_for_all()
     {
-        for (auto it = clients.begin(); it != clients.end(); ++it) {
+        for(auto it = clients.begin(); it != clients.end();++it) {
             (*it)->clients_changed = true;
         }
         client_list_changed = false;
@@ -240,5 +250,12 @@ public:
     std::mutex my_lock;
     bool client_list_changed;
 };
+
+int main() {
+    std::cout << clock();
+    server test;
+    test.start();
+    return 0;
+}
 
 #endif // INCLUDE_HEADER_HPP_
