@@ -28,7 +28,7 @@ namespace logging = boost::log;
 #define TRUE 1
 #define TIMEOUT 5
 #define SIZE_FILE 10*1024*1024
-#define type_exeption "read_until: Resource temporarily unavailable"
+const std::string type_exeption("read_until: Resource temporarily unavailable");
 
 
 struct member{
@@ -191,10 +191,10 @@ public:
     {
         while (TRUE) {
             member new_member(service);
-            acceptor acceptor(*service,
+            acceptor acc(*service,
                     endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
                              8001));
-            acceptor.accept(new_member.my_socket);
+            acc.accept(new_member.my_socket);
             my_lock.lock();
             tmp_clients.emplace_back(std::make_shared<member>
             (std::move(new_member)));
