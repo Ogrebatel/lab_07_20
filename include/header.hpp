@@ -100,7 +100,6 @@ public:
                 } else if (request == "clients") {
                     send_clients_list(*it);
                     (*it)->_lastTime = clock();
-                    
                 } else {
                     time_t end = (clock() - (*it)->_lastTime)/CLOCKS_PER_SEC;
                     if (end > TIMEOUT)
@@ -126,7 +125,7 @@ public:
         if (!client->name.empty())
             return false;
         client->name = request.substr(6, request.length());
-        for(auto & _client : clients) _client->clients_changed = true;
+        for (auto & _client : clients) _client->clients_changed = true;
         client->clients_changed = false;
         return true;
     }
@@ -172,7 +171,7 @@ public:
         boost::asio::streambuf buffer{};
         std::ostream out(&buffer);
         std::string clients_list;
-        for(auto & _client : clients)
+        for (auto & _client : clients)
             clients_list = clients_list + _client->name + " ";
         clients_list += '\n';
         out << clients_list;
@@ -191,7 +190,7 @@ public:
 
     void accept_connection()
     {
-        while(TRUE) {
+        while (TRUE) {
             member new_member(service);
             acceptor acceptor(*service,
                     endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
