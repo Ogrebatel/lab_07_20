@@ -67,6 +67,7 @@ public:
             for (auto it = clients.begin(); it != clients.end();){
                 try {
                     if (!(*it)->my_socket.is_open()) throw 1;
+                    (*it)->my_socket.non_blocking(true);
                     boost::asio::read_until((*it)->my_socket, buffer, '\n');
                 }
 
