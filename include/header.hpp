@@ -16,6 +16,8 @@
 #include <mutex>
 #include <thread>
 #include <ctime>
+#include <vector>
+#include <string>
 
 using std::thread;
 using std::exception;
@@ -26,11 +28,11 @@ namespace logging = boost::log;
 #define TRUE 1
 #define TIMEOUT 5
 #define SIZE_FILE 10*1024*1024
-static const std::string type_exeption ("read_until: Resource temporarily unavailable");
+#define type_exeption "read_until: Resource temporarily unavailable"
 
 
 struct member{
-    member(boost::asio::io_service* service):
+    explicit member(boost::asio::io_service* service):
     my_socket(*service) {}
     sock my_socket;
     std::string name;
@@ -56,14 +58,14 @@ public:
     void main_loop(){
         boost::asio::streambuf buffer{};
         log_init();
-        while(TRUE) {
+        while (TRUE) {
             my_lock.lock();
             reload_vector();
             if (client_list_changed)
                 change_for_all();
             my_lock.unlock();
 
-            for(auto it = clients.begin(); it != clients.end();) {
+            for (auto it = clients.begin(); it != clients.end();) {
                // sleep(5);
                 try {
                     if (!(*it)->my_socket.is_open()) throw 1;
@@ -84,18 +86,17 @@ public:
 
                 std::string output(std::istreambuf_iterator<char>{&buffer},
                                    std::istreambuf_iterator<char>{});
-                std::string request = output.substr(0, output.find_first_of('\n'));
+                std::string request =
+                output.substr(0, output.find_first_of('\n'));
 
                 if (request.find("login") == 0) {
-                    bool check = login_client(*it ,request);
+                    bool check = login_client(*it, request);
                     send_to_logged(*it, check);
                     (*it)->_lastTime = clock();
-                    
                 } else if (request == "ping") {
                     bool check = ping_from_client(*it);
                     answer_to_ping(*it, check);
                     (*it)->_lastTime = clock();
-                    
                 } else if (request == "clients") {
                     send_clients_list(*it);
                     (*it)->_lastTime = clock();
@@ -120,7 +121,8 @@ public:
 
 //---------------------------- LOGIN ---------------------------------
 
-    bool login_client(std::shared_ptr<member> client, const std::string& request){
+    bool login_client(std::shared_ptr<member> client,
+                      const std::string& request){
         if (!client->name.empty())
             return false;
         client->name = request.substr(6, request.length());
@@ -192,10 +194,12 @@ public:
         while(TRUE) {
             member new_member(service);
             acceptor acceptor(*service,
-                    endpoint(boost::asio::ip::address::from_string("127.0.0.1"), 8001));
+                    endpoint(boost::asio::ip::address::from_string("127.0.0.1"),
+                             8001));
             acceptor.accept(new_member.my_socket);
             my_lock.lock();
-            tmp_clients.emplace_back(std::make_shared<member>(std::move(new_member)));
+            tmp_clients.emplace_back(std::make_shared<member>
+            (std::move(new_member)));
             client_list_changed = true;
             my_lock.unlock();
             BOOST_LOG_TRIVIAL(trace) << "new client connected";
@@ -219,26 +223,26 @@ public:
 
     void log_init()
     {
-        boost::log::register_simple_formatter_factory< boost::log::trivial::severity_level, char >("Severity");
+        boost::log::register_simple_formatter_factory
+        <boost::log::trivial::severity_level, char>("Severity");
         logging::add_file_log // расширенная настройка
-                (
-                        logging::keywords::file_name = "log_%N.log",
-                        logging::keywords::rotation_size = SIZE_FILE,
-                        logging::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
-                        logging::keywords::format = "[%TimeStamp%] [%Severity%] %Message%"
-                );
+        (
+        logging::keywords::file_name = "log_%N.log",
+        logging::keywords::rotation_size = SIZE_FILE,
+        logging::keywords::time_based_rotation =
+        boost::log::sinks::file::rotation_at_time_point{0, 0, 0},
+        logging::keywords::format = "[%TimeStamp%] [%Severity%] %Message%");
 
         logging::add_console_log
                 (
-                        std::cout,
-                        logging::keywords::format = "[%TimeStamp%] [%Severity%]: %Message%"
-                );
+                std::cout,
+        logging::keywords::format = "[%TimeStamp%] [%Severity%]: %Message%");
         logging::add_common_attributes();
     }
 
     void change_for_all()
     {
-        for(auto it = clients.begin(); it != clients.end();++it) {
+        for (auto it = clients.begin(); it != clients.end(); ++it) {
             (*it)->clients_changed = true;
         }
         client_list_changed = false;
