@@ -179,7 +179,7 @@ public:
 
 //--------------------------------------------------------------------
 
-    void bad_request(std::shared_ptr<member> client, std::string request){
+    void bad_request(std::shared_ptr<member> client){
         boost::asio::streambuf buffer{};
         BOOST_LOG_TRIVIAL(info) << "client " << client->name
                                 << ":" << " bad request";
